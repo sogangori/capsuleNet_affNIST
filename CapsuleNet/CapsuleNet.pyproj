@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>0df9f594-1dc8-4370-a0a6-3f216cbfbf8f</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>CapsuleNet.py</StartupFile>
+    <StartupFile>CNN.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -22,6 +22,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CNN.py" />
     <Compile Include="CapsuleNet.py" />
     <Compile Include="affNIST.py">
       <SubType>Code</SubType>

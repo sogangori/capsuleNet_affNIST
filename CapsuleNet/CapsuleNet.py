@@ -16,12 +16,13 @@ import affNIST
 
 modelName = './weights/caps.pd'
 AFFIN = True
+RECONSTRUCT = True
 ROUT_COUNT = 3
 FREQ = 2
 epoch = 500
 BATCH = 50
-REDUCE_DATA_COUNT_RATIO = 100
-learning_rate = 1e-4
+REDUCE_DATA_COUNT_RATIO = 1
+learning_rate = 1e-3
 isNewTrain =  True     
 
 def forward(x):
@@ -48,6 +49,7 @@ def padding(x,max_offset=12):
     bz,h,w = x.shape
     bg = np.zeros([bz,40,40])
     offsets = np.random.randint(0,max_offset,2)
+    #offsets = [6,6]
     bg[:,offsets[0]:offsets[0]+h,offsets[1]:offsets[1]+w] = x
     bg = np.expand_dims(bg,-1)
     return bg
@@ -95,8 +97,6 @@ def capsNet(x, reuse = False):
 
     with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm, padding='VALID', weights_initializer=tf.contrib.layers.xavier_initializer(),weights_regularizer=slim.l2_regularizer(0.00001)):
         
-        #c = tf.stop_gradient(tf.nn.softmax(b, dim=5))
-
         conv1 = slim.conv2d(x, 256,[9,9],[1,1])
         print ('    conv1',conv1)        
         u = slim.conv2d(conv1, 8*32,[9,9],[2,2])
@@ -109,7 +109,6 @@ def capsNet(x, reuse = False):
         u_ = tf.reduce_sum(uw, axis=[2],keep_dims=True)
         print ('    u_',u_)#(10, 1152, 1, 10, 16)
         
-        #b = tf.stop_gradient(b)
         for i in range(ROUT_COUNT):            
             c = tf.stop_gradient(tf.nn.softmax(b, dim=3))
             #c = tf.nn.softmax(b, dim=3)
@@ -181,8 +180,8 @@ def main(arg=None):
     print ('    pos_loss_n',pos_loss_n)
     margin_loss = pos_loss_p + 0.5 * pos_loss_n
     restruc_loss = tf.reduce_mean(tf.reduce_sum(tf.square(x_4d-recon_x), axis=[1,2]))
-    loss = margin_loss + 5e-5 * restruc_loss
-    #margin_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y_int,logits=hyperthesis))
+    loss = margin_loss
+    if RECONSTRUCT: loss += 5e-5 * restruc_loss
     
     train_step = tf.train.AdamOptimizer(learning_rate, 0.9).minimize(loss)
 
