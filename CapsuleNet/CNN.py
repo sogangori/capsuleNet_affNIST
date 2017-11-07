@@ -1,5 +1,4 @@
-﻿#reference https://github.com/laodar/tf_CapsNet/blob/master/CapsNet.py
-from __future__ import absolute_import
+﻿from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
@@ -21,17 +20,7 @@ epoch = 500
 BATCH = 50
 REDUCE_DATA_COUNT_RATIO = 1
 learning_rate = 1e-3
-isNewTrain =  True     
-
-def padding(x,max_offset=12):
-    x = np.reshape(x, [-1,28,28])
-    bz,h,w = x.shape
-    bg = np.zeros([bz,40,40])
-    offsets = np.random.randint(0,max_offset,2)
-    #offsets = [6,6]
-    bg[:,offsets[0]:offsets[0]+h,offsets[1]:offsets[1]+w] = x
-    bg = np.expand_dims(bg,-1)
-    return bg
+isNewTrain =  not True     
 
 def conventionalCNN(x):
     
@@ -100,7 +89,7 @@ def main(arg=None):
                 start = i * BATCH
                 end =  np.minimum(start + BATCH, m)
                 batch_x = x[start:end]
-                if Pad: batch_x = padding(batch_x)
+                if Pad: batch_x = util.padding(batch_x)
                 else: batch_x = np.reshape(batch_x, [-1,h,w,1])
                 feed = {X:batch_x , Y: y[start:end]}    
                 if train: _,ML,acc = sess.run([train_step,loss,accuracy],feed)            

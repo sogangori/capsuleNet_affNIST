@@ -11,80 +11,17 @@ from time import localtime, strftime
 from tensorflow.examples.tutorials.mnist import input_data
 import affNIST
 import util
+import CapsuleLayer
 
 modelName = './weights/caps_overlap.pd'
-DIGIT_CAP_D = 16
 AFFIN = True
 RECONSTRUCT = True
-ROUT_COUNT = 3
 FREQ = 10
-epoch = 5000
-BATCH = 100#must even number
+epoch = 100
+BATCH = 300#must even number
 REDUCE_DATA_COUNT_RATIO = 100
 learning_rate = 1e-3
-isNewTrain = True     
-
-def capsNet(x, reuse = False):
-    with tf.variable_scope('CapsNet',reuse=reuse):
-        wcap = tf.get_variable('wcap',[1,6*6*32,8,10,16],initializer=tf.truncated_normal_initializer(stddev=0.02))
-        b = tf.get_variable('coupling_coefficient_logits',[1,6*6*32,1,10,1],initializer=tf.constant_initializer(0.0))
-
-    with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm, padding='VALID', weights_initializer=tf.contrib.layers.xavier_initializer(),weights_regularizer=slim.l2_regularizer(0.00001)):
-        
-        conv1 = slim.conv2d(x, 256,[9,9],[1,1])
-        print ('    conv1',conv1)        
-        u = slim.conv2d(conv1, 8*32,[9,9],[2,2])
-        print ('    u',u)
-        u = tf.reshape(u,[-1,6*6*32,8,1,1])
-                
-        uw = u*wcap
-        print ('    uw',uw)#(?, 6, 6, 32, 8, 10, 16)        
-
-        u_ = tf.reduce_sum(uw, axis=[2],keep_dims=True)
-        print ('    u_',u_)#(10, 1152, 1, 10, 16)
-        
-        for i in range(ROUT_COUNT):            
-            c = tf.nn.softmax(b, dim=3)
-            c = tf.stop_gradient(c)
-            
-            print (i,'    c',c)#(10, 1152, 1, 10, 1)
-                        
-            uc = u_ * c
-            print (i,'    uc',uc)#(?, 1152, 8, 10, 16)
-
-            s = tf.reduce_sum(uc, axis=[1], keep_dims=True)#(?, 10, 16)
-            print ('    s',s)#(10, 1, 1, 10, 16),
-
-            v = util.squash(s)#(?, 10, 1, 1, 16)
-            print ('    v',v)
-
-            a = tf.reduce_sum(u_*v,axis=-1,keep_dims=True)#(?, 1152, 1, 10, 1) 
-            print (i,'    a',a)
-
-            b += tf.reduce_sum(a,axis=-1,keep_dims=True)            
-            print (i,'    b+',b)#(10, 1152, 1, 10, 1)
-        
-        print ('    v squeeze before',v)
-        v = tf.squeeze(v,axis=[1,2])
-        print ('    v squeeze after',v)
-                
-    return v
-
-def reconstruct(DigitCaps,mask):
-    with tf.variable_scope('reconstruct',reuse=True):
-        print ('    DigitCaps',DigitCaps)
-        print ('    mask',mask)
-        y_m = tf.expand_dims(mask,-1) * DigitCaps 
-        print ('    y_m',y_m)#(?, 10, 16),
-
-        flat = slim.flatten(y_m)
-        print ('    flat',flat)
-        fc = slim.fully_connected(flat,512,activation_fn=tf.nn.relu)
-        fc = slim.fully_connected(fc,1024,activation_fn=tf.nn.relu)
-        fc = slim.fully_connected(fc,28*28, activation_fn=tf.nn.sigmoid)
-        fc = tf.reshape(fc, [-1,28,28,1])
-        print ('    fc',fc)
-    return fc
+isNewTrain = not True     
 
 def main(arg=None):
     
@@ -109,12 +46,12 @@ def main(arg=None):
     y_0 = Y_ONE_HOT[0::2]
     y_1 = Y_ONE_HOT[1::2]
     y_overlap = y_0+y_1
-
-    DigitCaps = capsNet(x_overlap)
+    
+    DigitCaps = CapsuleLayer.capsnet_forward(x_overlap)
     hyperthesis = tf.norm(DigitCaps, ord=2, axis=-1)
            
-    recon_x_0 = reconstruct(DigitCaps,y_0)
-    recon_x_1 = reconstruct(DigitCaps,y_1)    
+    recon_x_0 = CapsuleLayer.reconstruct(DigitCaps,y_0)
+    recon_x_1 = CapsuleLayer.reconstruct(DigitCaps,y_1)    
 
     recon_x = tf.clip_by_value(recon_x_0 + recon_x_1,0,1)
         
@@ -185,10 +122,12 @@ def main(arg=None):
         batch_x = util.padding(batch_x)                
         batch_y = mnist.train.labels[start:end]
         feed = {X:batch_x , Y: batch_y}    
-        acc,recon_0,recon_1, ori_arr,y_gt_out = sess.run([accuracy,recon_x_0,recon_x_1,x_resize,y_gt],feed) 
+        acc,recon_0,recon_1, ori_arr,y_gt_out,predict2 = sess.run([accuracy,recon_x_0,recon_x_1,x_resize,y_gt,top_predict],feed) 
         print ('ori_arr',ori_arr.shape)
         print ('recon_0',recon_0.shape)
-        
+        print('y_gt_out',y_gt_out)
+       
+
         r = ori_arr[0]
         g = ori_arr[1]
         b = np.zeros_like(r)
@@ -201,7 +140,7 @@ def main(arg=None):
         dual_image = np.stack([ori_rgb,recon_rgb])
         print ('dual_image ',dual_image.shape )
         recon_image = np.reshape(dual_image,[28*2,28,3])
-        util.save(recon_image,y_gt_out,'./reconstruct/',i)
+        util.save(recon_image,y_gt_out,'./reconstruct/',predict2)
     save_path = saver.save(sess, modelName) 
 
 tf.app.run()
