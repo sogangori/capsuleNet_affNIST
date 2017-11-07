@@ -119,3 +119,9 @@ def squash(s, axis=-1):
     length_s = tf.reduce_sum(s ** 2.0, axis=axis, keep_dims=True) ** 0.5
     v = s * length_s / (1.0 + length_s ** 2.0)
     return v
+
+def margin_loss(Y,H):
+    pos_loss_p = Y*tf.square(tf.maximum(0.0, 0.9 - H))
+    pos_loss_n = (1-Y)*tf.square(tf.maximum(0.0, H - 0.1 ))    
+    margin_loss = tf.reduce_mean(pos_loss_p + 0.5 * pos_loss_n)
+    return margin_loss

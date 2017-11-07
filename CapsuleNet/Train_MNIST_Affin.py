@@ -42,14 +42,10 @@ def main(arg=None):
     x_4d = tf.image.resize_bilinear(X, [28, 28])
     DigitCaps = CapsuleLayer.capsnet_forward(x_4d)
     hyperthesis = tf.norm(DigitCaps, ord=2, axis=-1)#(?, 10)
-    print ('    hyperthesis',hyperthesis)     
            
-    recon_x = CapsuleLayer.reconstruct(DigitCaps,Y_ONE_HOT)    
-        
-    pos_loss_p = tf.reduce_mean(Y_ONE_HOT*tf.square(tf.maximum(0.0, 0.9 - hyperthesis)))
-    pos_loss_n = tf.reduce_mean((1-Y_ONE_HOT)*tf.square(tf.maximum(0.0, hyperthesis - 0.1 )))
+    recon_x = CapsuleLayer.reconstruct(DigitCaps,Y_ONE_HOT)        
+    margin_loss = CapsuleLayer.margin_loss(Y_ONE_HOT,hyperthesis)            
     
-    margin_loss = pos_loss_p + 0.5 * pos_loss_n
     restruc_loss = tf.reduce_mean(tf.reduce_sum(tf.square(x_4d-recon_x), axis=[1,2]))
     loss = margin_loss
     if RECONSTRUCT: loss += 5e-5 * restruc_loss

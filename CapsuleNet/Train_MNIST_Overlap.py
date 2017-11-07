@@ -51,14 +51,10 @@ def main(arg=None):
     hyperthesis = tf.norm(DigitCaps, ord=2, axis=-1)
            
     recon_x_0 = CapsuleLayer.reconstruct(DigitCaps,y_0)
-    recon_x_1 = CapsuleLayer.reconstruct(DigitCaps,y_1)    
-
+    recon_x_1 = CapsuleLayer.reconstruct(DigitCaps,y_1)
     recon_x = tf.clip_by_value(recon_x_0 + recon_x_1,0,1)
         
-    pos_loss_p = tf.reduce_mean(y_overlap*tf.square(tf.maximum(0.0, 0.9 - hyperthesis)))
-    pos_loss_n = tf.reduce_mean((1-y_overlap)*tf.square(tf.maximum(0.0, hyperthesis - 0.1 )))
-    
-    margin_loss = pos_loss_p + 0.5 * pos_loss_n
+    margin_loss = CapsuleLayer.margin_loss(y_overlap,hyperthesis)    
     restruc_loss = tf.reduce_mean(tf.reduce_sum(tf.square(x_overlap-recon_x), axis=[1,2]))
     loss = margin_loss
     if RECONSTRUCT: loss += 5e-5 * restruc_loss
@@ -125,8 +121,7 @@ def main(arg=None):
         acc,recon_0,recon_1, ori_arr,y_gt_out,predict2 = sess.run([accuracy,recon_x_0,recon_x_1,x_resize,y_gt,top_predict],feed) 
         print ('ori_arr',ori_arr.shape)
         print ('recon_0',recon_0.shape)
-        print('y_gt_out',y_gt_out)
-       
+        print('y_gt_out',y_gt_out)       
 
         r = ori_arr[0]
         g = ori_arr[1]
