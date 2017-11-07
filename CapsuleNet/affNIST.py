@@ -38,12 +38,23 @@ def _todict(matobj):
             dict[strg] = elem
     return dict
 
-def visualization(vector, vector_name,count,index):
-    y = np.reshape(vector, (40, 40))
+def visualization(x, y,count,index):
+    x = np.reshape(x, (40, 40))
     
     plt.subplot(1,count,index)
-    plt.imshow(y, cmap=cm.Greys_r)
-    plt.title(vector_name)
+    plt.imshow(x, cmap=cm.Greys_r)
+    plt.title(y)
+    plt.axis('off')   
+
+def visualization_overlap(x0,x1, y0,y1,count,index):
+    r = np.reshape(x0, (40, 40))
+    g = np.reshape(x1, (40, 40))
+    b = np.zeros_like(r)
+    rgb = np.stack([r,g,b],-1)
+    
+    plt.subplot(1,count,index)
+    plt.imshow(rgb)
+    plt.title('R:('+ str(y0)+','+str(y1)+')')
     plt.axis('off')   
 
 def load_affNIST():
@@ -58,12 +69,18 @@ def load_affNIST():
 
 if __name__ == '__main__':
     
+    OVERLAP = not True
+    count = 10
+
     train_set,ans_set = load_affNIST()
     print ('min',np.min(train_set[0]),np.max(train_set[0]))
-    count = 10
+    #train_set_overlap = train_set[0::2]+train_set[1::2]    
     for j in range((int)(len(ans_set)/count)):
         for i in range(count):
-            index = j*count+i
-            visualization(train_set[index], ans_set[index],count,i+1)
+            index = np.minimum(j*count+i, len(ans_set)-1)
+            if OVERLAP:
+                visualization_overlap(train_set[index],train_set[index+1],ans_set[index],ans_set[index+1],count,i+1)
+            else: 
+                visualization(train_set_overlap[index], ans_set[index],count,i+1)
 
         plt.show()
