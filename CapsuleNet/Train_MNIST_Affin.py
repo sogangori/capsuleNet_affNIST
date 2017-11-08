@@ -70,7 +70,7 @@ def main(arg=None):
     def feed_all(x, y, train=False, Pad=False):
         m = (int)(len(y)/REDUCE_DATA_COUNT_RATIO)
         iter = (int)((m-1)/BATCH+1)
-        acc_sum = np.zeros_like((1), np.float)
+        acc_sum = np.zeros((1), np.float)
         for i in range(iter):
             start = i * BATCH
             end =  np.minimum(start + BATCH, m)

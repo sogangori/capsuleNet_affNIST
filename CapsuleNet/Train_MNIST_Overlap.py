@@ -46,6 +46,7 @@ def main(arg=None):
     y_0 = Y_ONE_HOT[0::2]
     y_1 = Y_ONE_HOT[1::2]
     y_overlap = y_0+y_1
+    y_overlap = tf.clip_by_value(y_overlap,0,1)
     
     DigitCaps = CapsuleLayer.capsnet_forward(x_overlap)
     hyperthesis = tf.norm(DigitCaps, ord=2, axis=-1)
@@ -64,9 +65,11 @@ def main(arg=None):
     top_values, top_predict = tf.nn.top_k(hyperthesis,2)
     
     y_gt = tf.stack([y_int[0::2],y_int[1::2]], 1)
+
+    y_gt_diff_class = 1 - tf.cast(tf.equal(y_gt[0],y_gt[1]),tf.int32)
     predict_sort = tf.py_func(np.sort, [top_predict], tf.int32)
     y_gt_sort = tf.py_func(np.sort, [y_gt], tf.int32)
-    accuracy = tf.reduce_mean(tf.cast(tf.equal(predict_sort, y_gt_sort), tf.float32))
+    accuracy = tf.reduce_mean(tf.cast(tf.equal(y_gt_diff_class*predict_sort, y_gt_diff_class*y_gt_sort), tf.float32))
 
     sess = tf.Session()
     saver = tf.train.Saver()
@@ -83,7 +86,7 @@ def main(arg=None):
     def feed_all(x, y, train=False, Pad=False):
         m = (int)(len(y)/REDUCE_DATA_COUNT_RATIO)
         iter = (int)((m-1)/BATCH+1)
-        acc_sum = np.zeros_like((1), np.float)
+        acc_sum = np.zeros((1), np.float)
         for i in range(iter):
             start = i * BATCH
             end =  np.minimum(start + BATCH, m)
@@ -91,6 +94,8 @@ def main(arg=None):
             if Pad: batch_x = util.padding(batch_x)
             else: batch_x = np.reshape(batch_x, [-1,h,w,1])
             feed = {X:batch_x , Y: y[start:end]}    
+            #equalRatio = np.mean(np.equal(y[::2], y[1::2]))
+            #print (i,'equalRatio ',equalRatio )
             if train: _,ML,RL,acc = sess.run([train_step,margin_loss,restruc_loss,accuracy],feed)            
             else : ML,RL,acc = sess.run([margin_loss,restruc_loss,accuracy],feed)
             acc_sum += acc/iter
