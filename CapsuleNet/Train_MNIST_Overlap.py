@@ -17,9 +17,9 @@ modelName = './weights/caps_overlap.pd'
 AFFIN = True
 RECONSTRUCT = True
 FREQ = 10
-epoch = 100
+epoch = 10
 BATCH = 300#must even number
-REDUCE_DATA_COUNT_RATIO = 100
+REDUCE_DATA_COUNT_RATIO = 1
 learning_rate = 1e-3
 isNewTrain = not True     
 
@@ -41,8 +41,8 @@ def main(arg=None):
     Y_ONE_HOT = tf.one_hot(y_int,10)
 
     x_resize = tf.image.resize_bilinear(X, [28, 28])
+    x_overlap = tf.clip_by_value(x_resize[0::2]+x_resize[1::2],0,1)
 
-    x_overlap = x_resize[0::2]+x_resize[1::2]        
     y_0 = Y_ONE_HOT[0::2]
     y_1 = Y_ONE_HOT[1::2]
     y_overlap = y_0+y_1
@@ -118,10 +118,12 @@ def main(arg=None):
         batch_x = util.padding(batch_x)                
         batch_y = mnist.train.labels[start:end]
         feed = {X:batch_x , Y: batch_y}    
-        acc,recon_0,recon_1, ori_arr,y_gt_out,predict2 = sess.run([accuracy,recon_x_0,recon_x_1,x_resize,y_gt,top_predict],feed) 
+        acc,x_overlap_in, recon_0,recon_1, ori_arr,y_gt_out,predict2 = sess.run([accuracy,x_overlap,recon_x_0,recon_x_1,x_resize,y_gt,top_predict],feed) 
         print ('ori_arr',ori_arr.shape)
         print ('recon_0',recon_0.shape)
         print('y_gt_out',y_gt_out)       
+                
+        in_rgb = np.stack([x_overlap_in[0],x_overlap_in[0],x_overlap_in[0]],2)
 
         r = ori_arr[0]
         g = ori_arr[1]
@@ -132,9 +134,9 @@ def main(arg=None):
         g = recon_1[0]        
         recon_rgb = np.stack([r,g,b],2)
 
-        dual_image = np.stack([ori_rgb,recon_rgb])
+        dual_image = np.stack([in_rgb,ori_rgb,recon_rgb])
         print ('dual_image ',dual_image.shape )
-        recon_image = np.reshape(dual_image,[28*2,28,3])
+        recon_image = np.reshape(dual_image,[28*3,28,3])
         util.save(recon_image,y_gt_out,'./reconstruct/',predict2)
     save_path = saver.save(sess, modelName) 
 
