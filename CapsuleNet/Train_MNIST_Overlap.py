@@ -19,7 +19,7 @@ RECONSTRUCT = True
 FREQ = 10
 epoch = 10
 BATCH = 300#must even number
-REDUCE_DATA_COUNT_RATIO = 1
+REDUCE_DATA_COUNT_RATIO = 100
 learning_rate = 1e-3
 isNewTrain = not True     
 
@@ -65,11 +65,10 @@ def main(arg=None):
     top_values, top_predict = tf.nn.top_k(hyperthesis,2)
     
     y_gt = tf.stack([y_int[0::2],y_int[1::2]], 1)
-
-    y_gt_diff_class = 1 - tf.cast(tf.equal(y_gt[0],y_gt[1]),tf.int32)
+        
     predict_sort = tf.py_func(np.sort, [top_predict], tf.int32)
     y_gt_sort = tf.py_func(np.sort, [y_gt], tf.int32)
-    accuracy = tf.reduce_mean(tf.cast(tf.equal(y_gt_diff_class*predict_sort, y_gt_diff_class*y_gt_sort), tf.float32))
+    accuracy = tf.reduce_mean(tf.cast(tf.equal(predict_sort, y_gt_sort), tf.float32))
 
     sess = tf.Session()
     saver = tf.train.Saver()
