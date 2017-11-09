@@ -1,8 +1,4 @@
-﻿from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import sys
+﻿import sys
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import numpy as np
@@ -13,15 +9,32 @@ import affNIST
 import util
 import CapsuleLayer
 
-modelName = './weights/caps_overlap.pd'
+modelName = './weights/base_cnn_overlap.pd'
 AFFIN = True
 RECONSTRUCT = True
 FREQ = 10
-epoch = 100
-BATCH = 300#must even number
+epoch = 1000
+BATCH = 600#must even number
 REDUCE_DATA_COUNT_RATIO = 1
-learning_rate = 1e-3
-isNewTrain = not True     
+learning_rate = 1e-4
+isNewTrain =  True     
+ 
+def baseCNN(x,isTrain=False):
+    
+    with slim.arg_scope([slim.conv2d], normalizer_fn=None, padding='VALID', weights_initializer=tf.contrib.layers.xavier_initializer(),weights_regularizer=slim.l2_regularizer(0.00001)):
+        pool = slim.conv2d(x, 255,[5,5],[1,1])        
+        pool = slim.conv2d(pool, 255,[5,5],[1,1])        
+        pool = slim.conv2d(pool, 128,[5,5],[1,1])#(?,16,16,128)
+        print ('    pool',pool)  
+        fc = slim.flatten(pool) #(?,32768)
+        print ('    fc',fc)  
+        fc  = slim.fully_connected(fc, 328)
+        fc  = slim.fully_connected(fc, 192)
+        fc  = slim.dropout(fc, 0.8, is_training = isTrain )
+        out = slim.fully_connected(fc, 10)
+        print ('    out',out)        
+        
+    return out
 
 def main(arg=None):
     
@@ -34,12 +47,13 @@ def main(arg=None):
     trainIn, trainOut = util.skip_no_equal_neighbor(mnist.train.images,mnist.train.labels)
     validIn, validOut = util.skip_no_equal_neighbor(mnist.test.images, mnist.test.labels)    
     affNIST_in,affNIST_out = util.skip_no_equal_neighbor(affNIST_in,affNIST_out)
-    
+
     h = w = 28
     if AFFIN: h = w = 40
 
     X = tf.placeholder(tf.float32, [None, None,None,1])
     Y = tf.placeholder(tf.float32, [None])
+    D = tf.placeholder(tf.bool)
 
     y_int = tf.cast(Y, tf.int32)    
     Y_ONE_HOT = tf.one_hot(y_int,10)
@@ -52,20 +66,10 @@ def main(arg=None):
     y_overlap = y_0+y_1
     y_overlap = tf.clip_by_value(y_overlap,0,1)
     
-    DigitCaps = CapsuleLayer.capsnet_forward(x_overlap)
-    hyperthesis = tf.norm(DigitCaps, ord=2, axis=-1)
-           
-    recon_x_0 = CapsuleLayer.reconstruct(DigitCaps,y_0)
-    recon_x_1 = CapsuleLayer.reconstruct(DigitCaps,y_1)
-    recon_x = tf.clip_by_value(recon_x_0 + recon_x_1,0,1)
+    hyperthesis = baseCNN(x_overlap,D)
         
-    margin_loss = CapsuleLayer.margin_loss(y_overlap,hyperthesis)    
-    restruc_loss = tf.reduce_mean(tf.reduce_sum(tf.square(x_overlap-recon_x), axis=[1,2]))
-    loss = margin_loss
-    if RECONSTRUCT: loss += 5e-5 * restruc_loss
-        
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_overlap, logits=hyperthesis))                
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-
     top_values, top_predict = tf.nn.top_k(hyperthesis,2)
     
     y_gt = tf.stack([y_int[0::2],y_int[1::2]], 1)
@@ -96,56 +100,25 @@ def main(arg=None):
             batch_x = x[start:end]
             if Pad: batch_x = util.padding(batch_x)
             else: batch_x = np.reshape(batch_x, [-1,h,w,1])
-            feed = {X:batch_x , Y: y[start:end]}    
-            #equalRatio = np.mean(np.equal(y[::2], y[1::2]))
-            #print (i,'equalRatio ',equalRatio )
-            if train: _,ML,RL,acc = sess.run([train_step,margin_loss,restruc_loss,accuracy],feed)            
-            else : ML,RL,acc = sess.run([margin_loss,restruc_loss,accuracy],feed)
+            feed = {X:batch_x , Y: y[start:end],D:train}    
+            if train: _,ML,acc = sess.run([train_step,loss,accuracy],feed)            
+            else : ML,acc = sess.run([loss,accuracy],feed)
             acc_sum += acc/iter
-        return acc_sum,ML,RL
+        return acc_sum,ML
         
     for i in range(epoch):
-        train_accuracy,ML_tr,RL_tr = feed_all(trainIn, trainOut,train=True, Pad=True)
+        train_accuracy,ML_tr = feed_all(trainIn, trainOut,train=True, Pad=True)
             
         if i<10 or i % FREQ == 0:
-            valid_accuracy,ML_v,RL_v = feed_all(validIn, validOut,train=False, Pad=True)
-            test_accuracy,ML_te,RL_te = feed_all(affNIST_in,affNIST_out,train=False,Pad=False)
+            valid_accuracy,ML_v = feed_all(validIn, validOut,train=False, Pad=True)
+            test_accuracy,ML_te = feed_all(affNIST_in,affNIST_out,train=False,Pad=False)
             now = strftime("%H:%M:%S", localtime())
-            print('step %d/%d, accuracy train:%.3f valid:%.3f test:%.3f loss:(%.7f, %.4f) %s' % (i,epoch, train_accuracy,valid_accuracy,test_accuracy,ML_tr,RL_tr,now))
+            print('step %d/%d, accuracy train:%.3f valid:%.3f test:%.3f loss:(%.7f) %s' % (i,epoch, train_accuracy,valid_accuracy,test_accuracy,ML_tr,now))
 
         this_sec = time.time()
-        if i==epoch-0 or this_sec - start_sec > 60 * 5 :
+        if i==epoch-1 or this_sec - start_sec > 60 * 5 :
             start_sec = this_sec
             save_path = saver.save(sess, modelName)            
-            print("Model Saved, time:%s, %s" %(now, save_path))         
-               
-    for i in range(10):
-        start = i 
-        end =  start + 2
-        batch_x = mnist.train.images[start:end]        
-        batch_x = util.padding(batch_x)                
-        batch_y = mnist.train.labels[start:end]
-        feed = {X:batch_x , Y: batch_y}    
-        acc,x_overlap_in, recon_0,recon_1, ori_arr,y_gt_out,predict2 = sess.run([accuracy,x_overlap,recon_x_0,recon_x_1,x_resize,y_gt,top_predict],feed) 
-        print ('ori_arr',ori_arr.shape)
-        print ('recon_0',recon_0.shape)
-        print('y_gt_out',y_gt_out)       
-                
-        in_rgb = np.stack([x_overlap_in[0],x_overlap_in[0],x_overlap_in[0]],2)
-
-        r = ori_arr[0]
-        g = ori_arr[1]
-        b = np.zeros_like(r)
-        ori_rgb = np.stack([r,g,b],2)
-        
-        r = recon_0[0]        
-        g = recon_1[0]        
-        recon_rgb = np.stack([r,g,b],2)
-
-        dual_image = np.stack([in_rgb,ori_rgb,recon_rgb])
-        print ('dual_image ',dual_image.shape )
-        recon_image = np.reshape(dual_image,[28*3,28,3])
-        util.save(recon_image,y_gt_out,'./reconstruct/',predict2)
-    save_path = saver.save(sess, modelName) 
+            print("Model Saved, time:%s, %s" %(now, save_path))                        
 
 tf.app.run()

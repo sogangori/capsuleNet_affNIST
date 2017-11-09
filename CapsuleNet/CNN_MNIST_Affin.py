@@ -12,6 +12,7 @@ from PIL import Image
 from time import localtime, strftime
 from tensorflow.examples.tutorials.mnist import input_data
 import affNIST
+import util
 
 modelName = './weights/conventionalCNN.pd'
 

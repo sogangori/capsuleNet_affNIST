@@ -5,6 +5,27 @@ import os
 import glob
 from PIL import Image
 
+def skip_no_equal_neighbor(images, labels):
+    m = len(images)
+    image_list = []
+    label_list = []
+    image_list.append(images[0])
+    label_list.append(labels[0])
+    for i in range(1,m):
+        if label_list[-1]!=labels[i]:
+            image_list.append(images[i])
+            label_list.append(labels[i])
+    
+    images = np.asarray(image_list)
+    labels = np.asarray(label_list)
+    print ('images',images.shape)
+    print ('labels',labels.shape)
+    if labels.shape[0]%2==1:
+        images = images[:-1]
+        labels = labels[:-1]
+    print ('images',images.shape)
+    print ('labels',labels.shape)
+    return images, labels
 
 def padding(x):    
     bz = x.shape[0]

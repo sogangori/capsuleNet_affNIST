@@ -1,0 +1,6 @@
+*.png
+*.tempstate*
+*.meta
+*.index
+*.pd.data-*
+*.pyc
