@@ -69,7 +69,7 @@ def capsnet_forward(x, reuse = False):
         uw = u*wcap
         print ('    uw',uw)#(?, 6*6*32, 8, 10, 16)        
 
-        u_ = tf.reduce_sum(uw, axis=[2])
+        u_ = tf.reduce_sum(uw, axis=2)
         print ('    u_',u_)#(10, 1152, 10, 16)
         
         for i in range(ROUT_COUNT):            
@@ -81,8 +81,8 @@ def capsnet_forward(x, reuse = False):
             uc = u_ * c
             print (i,'    uc',uc)#(?, 1152,10, 16)
 
-            s = tf.reduce_sum(uc, axis=[1], keep_dims=True)#(?,1, 10, 16)
-            print ('    s',s)#(10, 1, 1, 10, 16),
+            s = tf.reduce_sum(uc, axis=1, keep_dims=True)#(?,1, 10, 16)
+            print ('    s',s)#(?, 1, 10, 16),
 
             v = squash(s)#(?, 1, 10, 16)
             print ('    v',v)
@@ -91,11 +91,11 @@ def capsnet_forward(x, reuse = False):
             print (i,'    a',a)
 
             b += tf.reduce_sum(a,axis=-1,keep_dims=True)            
-            print (i,'    b+',b)#(10, 1152, 10, 1)
+            print (i,'    b+',b)#(?, 1152, 10, 1)
         
-        print ('    v squeeze before',v)
-        v = tf.squeeze(v,axis=[1])
-        print ('    v squeeze after',v)
+        print ('    v squeeze before',v)#(?, 1, 10, 16)
+        v = tf.squeeze(v,axis=1)
+        print ('    v squeeze after',v)#(?, 10, 16)
                 
     return v
 
