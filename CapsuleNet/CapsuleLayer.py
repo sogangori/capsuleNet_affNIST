@@ -56,7 +56,7 @@ def capsNetBasic(x, reuse = False):
 def capsnet_forward(x, reuse = False):
     with tf.variable_scope('CapsNet',reuse=reuse):
         wcap = tf.get_variable('wcap',[1,6*6*32,8,10,16],initializer=tf.truncated_normal_initializer(stddev=0.02))
-        b = tf.get_variable('coupling_coefficient_logits',[1,6*6*32,1,10,1],initializer=tf.constant_initializer(0.0))
+        b = tf.get_variable('coupling_coefficient_logits',[1,6*6*32,10,1],initializer=tf.constant_initializer(0.0))
 
     with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm, padding='VALID', weights_initializer=tf.contrib.layers.xavier_initializer(),weights_regularizer=slim.l2_regularizer(0.00001)):
         
@@ -67,34 +67,34 @@ def capsnet_forward(x, reuse = False):
         u = tf.reshape(u,[-1,6*6*32,8,1,1])
                 
         uw = u*wcap
-        print ('    uw',uw)#(?, 6, 6, 32, 8, 10, 16)        
+        print ('    uw',uw)#(?, 6*6*32, 8, 10, 16)        
 
-        u_ = tf.reduce_sum(uw, axis=[2],keep_dims=True)
-        print ('    u_',u_)#(10, 1152, 1, 10, 16)
+        u_ = tf.reduce_sum(uw, axis=[2])
+        print ('    u_',u_)#(10, 1152, 10, 16)
         
         for i in range(ROUT_COUNT):            
             c = tf.nn.softmax(b, dim=3)
             c = tf.stop_gradient(c)
             
-            print (i,'    c',c)#(10, 1152, 1, 10, 1)
+            print (i,'    c',c)#(10, 1152, 10, 1)
                         
             uc = u_ * c
-            print (i,'    uc',uc)#(?, 1152, 8, 10, 16)
+            print (i,'    uc',uc)#(?, 1152,10, 16)
 
-            s = tf.reduce_sum(uc, axis=[1], keep_dims=True)#(?, 10, 16)
+            s = tf.reduce_sum(uc, axis=[1], keep_dims=True)#(?,1, 10, 16)
             print ('    s',s)#(10, 1, 1, 10, 16),
 
-            v = squash(s)#(?, 10, 1, 1, 16)
+            v = squash(s)#(?, 1, 10, 16)
             print ('    v',v)
 
-            a = tf.reduce_sum(u_*v,axis=-1,keep_dims=True)#(?, 1152, 1, 10, 1) 
+            a = tf.reduce_sum(u_*v,axis=-1,keep_dims=True)#(?, 1152, 10, 1) 
             print (i,'    a',a)
 
             b += tf.reduce_sum(a,axis=-1,keep_dims=True)            
-            print (i,'    b+',b)#(10, 1152, 1, 10, 1)
+            print (i,'    b+',b)#(10, 1152, 10, 1)
         
         print ('    v squeeze before',v)
-        v = tf.squeeze(v,axis=[1,2])
+        v = tf.squeeze(v,axis=[1])
         print ('    v squeeze after',v)
                 
     return v
