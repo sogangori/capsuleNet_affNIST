@@ -5,6 +5,7 @@ import os
 import glob
 from PIL import Image
 
+
 def padding(x):    
     bz = x.shape[0]
     if np.rank(x)==2:

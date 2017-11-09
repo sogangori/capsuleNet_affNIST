@@ -74,13 +74,13 @@ if __name__ == '__main__':
 
     train_set,ans_set = load_affNIST()
     print ('min',np.min(train_set[0]),np.max(train_set[0]))
-    #train_set_overlap = train_set[0::2]+train_set[1::2]    
+    train_set_overlap = train_set[0::2]+train_set[1::2]    
     for j in range((int)(len(ans_set)/count)):
         for i in range(count):
             index = np.minimum(j*count+i, len(ans_set)-1)
             if OVERLAP:
                 visualization_overlap(train_set[index],train_set[index+1],ans_set[index],ans_set[index+1],count,i+1)
             else: 
-                visualization(train_set_overlap[index], ans_set[index],count,i+1)
+                visualization(train_set[index], ans_set[index],count,i+1)
 
         plt.show()

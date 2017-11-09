@@ -100,7 +100,7 @@ def capsnet_forward(x, reuse = False):
     return v
 
 def reconstruct(DigitCaps,mask):
-    with tf.variable_scope('reconstruct',reuse=True):
+    with tf.variable_scope('reconstruct',reuse=tf.AUTO_REUSE):
         print ('    DigitCaps',DigitCaps)
         print ('    mask',mask)
         y_m = tf.expand_dims(mask,-1) * DigitCaps 

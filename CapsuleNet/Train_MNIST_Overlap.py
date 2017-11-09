@@ -17,11 +17,31 @@ modelName = './weights/caps_overlap.pd'
 AFFIN = True
 RECONSTRUCT = True
 FREQ = 10
-epoch = 10
+epoch = 100
 BATCH = 300#must even number
-REDUCE_DATA_COUNT_RATIO = 100
+REDUCE_DATA_COUNT_RATIO = 1
 learning_rate = 1e-3
 isNewTrain = not True     
+
+def shuffle_no_equal_neighbor(images, labels):
+    m = len(images)
+    image_list = []
+    label_list = []
+    image_list.append(images[0])
+    label_list.append(labels[0])
+    for i in range(1,m):
+        if labels[i-1]!=labels[i]:
+            image_list.append(images[i])
+            label_list.append(labels[i])
+    
+    images = np.asarray(image_list)
+    labels = np.asarray(label_list)
+    print ('images',images.shape)
+    print ('labels',labels.shape)
+    if len(image_list)%2==1:
+        images = images[:-1]
+        labels = labels[:-1]
+    return images, labels
 
 def main(arg=None):
     
@@ -30,6 +50,10 @@ def main(arg=None):
     
     print ('affNIST min',np.min(affNIST_in[0]),np.max(affNIST_in[0]))
     print ('  MNIST min',np.min(mnist.train.images[0]),np.max(mnist.train.images[0]))
+
+    trainIn, trainOut = shuffle_no_equal_neighbor(mnist.train.images,mnist.train.labels)
+    validIn, validOut = shuffle_no_equal_neighbor(mnist.test.images, mnist.test.labels)    
+    affNIST_in,affNIST_out = shuffle_no_equal_neighbor(affNIST_in,affNIST_out)
 
     h = w = 28
     if AFFIN: h = w = 40
@@ -101,10 +125,10 @@ def main(arg=None):
         return acc_sum,ML,RL
         
     for i in range(epoch):
-        train_accuracy,ML_tr,RL_tr = feed_all(mnist.train.images, mnist.train.labels,train=True, Pad=True)
+        train_accuracy,ML_tr,RL_tr = feed_all(trainIn, trainOut,train=True, Pad=True)
             
         if i<10 or i % FREQ == 0:
-            valid_accuracy,ML_v,RL_v = feed_all(mnist.test.images, mnist.test.labels,train=False, Pad=True)
+            valid_accuracy,ML_v,RL_v = feed_all(validIn, validOut,train=False, Pad=True)
             test_accuracy,ML_te,RL_te = feed_all(affNIST_in,affNIST_out,train=False,Pad=False)
             now = strftime("%H:%M:%S", localtime())
             print('step %d/%d, accuracy train:%.3f valid:%.3f test:%.3f loss:(%.7f, %.4f) %s' % (i,epoch, train_accuracy,valid_accuracy,test_accuracy,ML_tr,RL_tr,now))
