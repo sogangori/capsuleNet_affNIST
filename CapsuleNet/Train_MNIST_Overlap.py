@@ -30,7 +30,7 @@ def shuffle_no_equal_neighbor(images, labels):
     image_list.append(images[0])
     label_list.append(labels[0])
     for i in range(1,m):
-        if labels[i-1]!=labels[i]:
+        if label_list[-1]!=labels[i]:
             image_list.append(images[i])
             label_list.append(labels[i])
     
