@@ -14,14 +14,14 @@ import util
 import CapsuleLayer
 
 modelName = './weights/caps.pd'
-AFFIN = True
+AFFINE = True
 RECONSTRUCT = True
 FREQ = 10
 epoch = 500
 BATCH = 200
 REDUCE_DATA_COUNT_RATIO = 100
 learning_rate = 1e-3
-isNewTrain =  True     
+isNewTrain =   True     
 
 def main(arg=None):
     
@@ -32,7 +32,7 @@ def main(arg=None):
     print ('  MNIST min',np.min(mnist.train.images[0]),np.max(mnist.train.images[0]))
 
     h = w = 28
-    if AFFIN: h = w = 40
+    if AFFINE: h = w = 40
 
     X = tf.placeholder(tf.float32, [None, None,None,1])
     Y = tf.placeholder(tf.float32, [None])
@@ -51,6 +51,7 @@ def main(arg=None):
     if RECONSTRUCT: loss += 5e-5 * restruc_loss
     
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+    #train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
 
     predict = tf.cast(tf.argmax(hyperthesis, 1),tf.int32)
     accuracy = tf.reduce_mean(tf.cast(tf.equal(predict, y_int), tf.float32))

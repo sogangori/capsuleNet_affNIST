@@ -3,7 +3,7 @@ Windows10
 Visual Studio 2013 Solution
 Tensorflow 1.4.0
 
-Compare CNN vs Capsule performance
-1. Affin  
+compare performance "baseCNN vs FCNN vs CapsNet"" 
+1. Affine  
 2. Overap 
 

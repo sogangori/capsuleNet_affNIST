@@ -56,7 +56,7 @@ def capsNetBasic(x, reuse = False):
 def capsnet_forward(x, reuse = False):
     with tf.variable_scope('CapsNet',reuse=reuse):
         wcap = tf.get_variable('wcap',[1,6*6*32,8,10,16],initializer=tf.truncated_normal_initializer(stddev=0.02))
-        b = tf.get_variable('coupling_coefficient_logits',[1,6*6*32,10,1],initializer=tf.constant_initializer(0.0))
+        b = tf.zeros([1,6*6*32,10,1])
 
     with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm, padding='VALID', weights_initializer=tf.contrib.layers.xavier_initializer(),weights_regularizer=slim.l2_regularizer(0.00001)):
         
@@ -73,7 +73,7 @@ def capsnet_forward(x, reuse = False):
         print ('    u_',u_)#(10, 1152, 10, 16)
         
         for i in range(ROUT_COUNT):            
-            c = tf.nn.softmax(b, dim=3)
+            c = tf.nn.softmax(b, dim=2)
             c = tf.stop_gradient(c)
             
             print (i,'    c',c)#(10, 1152, 10, 1)

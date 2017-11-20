@@ -11,17 +11,16 @@ import CapsuleLayer
 
 modelName = './weights/base_cnn_overlap.pd'
 AFFIN = True
-RECONSTRUCT = True
 FREQ = 10
 epoch = 1000
-BATCH = 600#must even number
+BATCH = 100#must even number
 REDUCE_DATA_COUNT_RATIO = 1
-learning_rate = 1e-4
-isNewTrain =  True     
+learning_rate = 1e-7
+isNewTrain = not True     
  
 def baseCNN(x,isTrain=False):
     
-    with slim.arg_scope([slim.conv2d], normalizer_fn=None, padding='VALID', weights_initializer=tf.contrib.layers.xavier_initializer(),weights_regularizer=slim.l2_regularizer(0.00001)):
+    with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm, padding='VALID', weights_initializer=tf.contrib.layers.xavier_initializer(),weights_regularizer=slim.l2_regularizer(0.00001)):
         pool = slim.conv2d(x, 255,[5,5],[1,1])        
         pool = slim.conv2d(pool, 255,[5,5],[1,1])        
         pool = slim.conv2d(pool, 128,[5,5],[1,1])#(?,16,16,128)
@@ -69,7 +68,11 @@ def main(arg=None):
     hyperthesis = baseCNN(x_overlap,D)
         
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_overlap, logits=hyperthesis))                
-    train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+    optimizer = tf.train.AdamOptimizer(learning_rate)    
+    gvs = optimizer.compute_gradients(loss)
+    capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+    train_step = optimizer.apply_gradients(capped_gvs)
+
     top_values, top_predict = tf.nn.top_k(hyperthesis,2)
     
     y_gt = tf.stack([y_int[0::2],y_int[1::2]], 1)
