@@ -56,7 +56,6 @@ def capsNetBasic(x, reuse = False):
 def capsnet_forward(x, reuse = False):
     with tf.variable_scope('CapsNet',reuse=reuse):
         wcap = tf.get_variable('wcap',[1,6*6*32,8,10,16],initializer=tf.truncated_normal_initializer(stddev=0.02))
-        b = tf.zeros([1,6*6*32,10,1])
 
     with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm, padding='VALID', weights_initializer=tf.contrib.layers.xavier_initializer(),weights_regularizer=slim.l2_regularizer(0.00001)):
         
@@ -71,6 +70,7 @@ def capsnet_forward(x, reuse = False):
 
         u_ = tf.reduce_sum(uw, axis=2)
         print ('    u_',u_)#(10, 1152, 10, 16)
+        b = tf.zeros([1,6*6*32,10,1],tf.float32)
         
         for i in range(ROUT_COUNT):            
             c = tf.nn.softmax(b, dim=2)
@@ -78,10 +78,10 @@ def capsnet_forward(x, reuse = False):
             
             print (i,'    c',c)#(10, 1152, 10, 1)
                         
-            uc = u_ * c
-            print (i,'    uc',uc)#(?, 1152,10, 16)
+            cu = c * u_
+            print (i,'    cu',cu)#(?, 1152,10, 16)
 
-            s = tf.reduce_sum(uc, axis=1, keep_dims=True)#(?,1, 10, 16)
+            s = tf.reduce_sum(cu, axis=1, keep_dims=True)#(?,1, 10, 16)
             print ('    s',s)#(?, 1, 10, 16),
 
             v = squash(s)#(?, 1, 10, 16)
@@ -116,8 +116,8 @@ def reconstruct(DigitCaps,mask):
     return fc
 
 def squash(s, axis=-1):
-    length_s = tf.reduce_sum(s ** 2.0, axis=axis, keep_dims=True) ** 0.5
-    v = s * length_s / (1.0 + length_s ** 2.0)
+    length_s = tf.sqrt(tf.reduce_sum(tf.square(s), axis=axis, keep_dims=True))
+    v = tf.square(length_s)/(1+tf.square(length_s)) * (s/length_s)    
     return v
 
 def margin_loss(Y,H):
